@@ -1,0 +1,11 @@
+{
+  "name": "vibegrade",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Graduation radar + launch score for vibe/vibe on Robinhood Chain Testnet",
+  "scripts": {
+    "test": "node test/curve.test.mjs",
+    "serve": "node scripts/serve.mjs"
+  }
+}

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VibeGrade · graduation radar for vibe/vibe</title>
+    <meta name="description" content="Exact distance to graduation for every live vibe/vibe launch on Robinhood Chain Testnet." />
+    <meta property="og:title" content="VibeGrade" />
+    <meta property="og:description" content="Exact distance to graduation for every live vibe/vibe launch." />
+    <link rel="stylesheet" href="/web/style.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23dff902'/%3E%3Ctext x='7' y='23' font-family='sans-serif' font-size='18' font-weight='bold' fill='%23101214'%3Evg%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="mark">vg</span>
+        <div>
+          <h1>VibeGrade</h1>
+          <p>graduation radar · vibe/vibe testnet</p>
+        </div>
+      </div>
+      <div class="meta">
+        <span id="eth" class="pill">ETH —</span>
+        <span id="clock" class="pill muted">—</span>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="radar">Radar</button>
+      <button class="tab" data-tab="graduated">Graduated</button>
+      <button class="tab" data-tab="trending">Trending</button>
+      <span class="spacer"></span>
+      <button id="refresh" class="ghost" title="refresh">↻</button>
+    </nav>
+
+    <main>
+      <section id="panel-radar" class="panel">
+        <div class="panel-head">
+          <h2>Closest to graduation</h2>
+          <p>Exact numbers from the bonding curve — not an estimate.</p>
+        </div>
+        <div id="radar-list" class="radar"></div>
+      </section>
+
+      <section id="panel-graduated" class="panel hidden">
+        <div class="panel-head">
+          <h2>Graduated</h2>
+          <p>Curve completed, liquidity locked in Uniswap v4.</p>
+        </div>
+        <div id="grad-grid" class="grid"></div>
+      </section>
+
+      <section id="panel-trending" class="panel hidden">
+        <div class="panel-head">
+          <h2>Trending</h2>
+          <p>By 24h activity.</p>
+        </div>
+        <div id="trending-grid" class="grid"></div>
+      </section>
+
+      <div id="status" class="status"></div>
+    </main>
+
+    <footer class="bottom">
+      <span>unofficial community tool · robinhood chain testnet · no affiliation</span>
+      <span><a href="https://t.me/VibeGraduation" target="_blank" rel="noopener">telegram</a></span>
+    </footer>
+
+    <script type="module" src="/web/app.js"></script>
+  </body>
+</html>
