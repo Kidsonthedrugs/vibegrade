@@ -67,11 +67,15 @@ function renderCards(target, rows, kind) {
     .map((r) => {
       const grad = r.graduation || {};
       const badge =
-        kind === "graduated"
-          ? `<span class="badge">graduated</span>`
-          : `<span class="badge" style="background:var(--card-2);color:var(--accent)">${progressBps(r) / 100 | 0}%</span>`;
+        r.kind !== "v6"
+          ? `<span class="badge" style="background:var(--card-2);color:var(--muted)">v5</span>`
+          : kind === "graduated"
+            ? `<span class="badge">graduated</span>`
+            : `<span class="badge" style="background:var(--card-2);color:var(--accent)">${progressBps(r) / 100 | 0}%</span>`;
       const stat2 =
-        kind === "graduated"
+        r.kind !== "v6"
+          ? `<span>legacy curve</span>`
+          : kind === "graduated"
           ? `<span><b>${fmtEth(BigInt(grad.pairUnits || 0), 2)}</b> raised</span>`
           : `<span><b>${toGradText(r)}</b> to go</span>`;
       return `<a class="card" href="https://testnet.vibevibe.fun/t/${r.token}" target="_blank" rel="noopener">
@@ -91,7 +95,9 @@ function renderCards(target, rows, kind) {
 
 async function loadRadar() {
   const items = await board("FINAL_STRETCH");
-  const rows = items.map(normalise).filter((r) => r.token && r.symbol && r.target > 0n && !r.graduated);
+  const rows = items
+    .map(normalise)
+    .filter((r) => r.kind === "v6" && r.token && r.symbol && r.target > 0n && !r.graduated);
   rows.forEach((r) => (r._toGrad = pairToGraduation(r)));
   rows.sort((a, b) => (a._toGrad < b._toGrad ? -1 : a._toGrad > b._toGrad ? 1 : 0));
   renderRadar(rows.slice(0, 12));

@@ -46,8 +46,13 @@ export async function ethUsd() {
 
 /** Normalise a board item into the numbers the radar needs (all base units as BigInt). */
 export function normalise(item) {
-  const l = item.launch || item;
+  // The board mixes generations: v6 items carry `launch`, legacy v5 carry `token`.
+  // V6 is the only generation our curve constants describe (800M / 4 ETH target).
+  const kind = item.kind || (item.launch ? "v6" : "v5");
+  const l = item.launch || item.token || item;
+  const curve = l.curve || {};
   return {
+    kind,
     token: l.tokenAddress,
     curve: l.curveAddress,
     name: l.name,
@@ -56,17 +61,17 @@ export function normalise(item) {
     pairSymbol: l.pairSymbol,
     pairIsNative: l.pairIsNative,
     target: BigInt(l.targetPairUnits || 0),
-    sold: BigInt(l.curve?.tokensSoldGrossUnits || 0),
-    pairPrincipal: BigInt(l.curve?.pairReserveUnits || 0),
+    sold: BigInt(curve.tokensSoldGrossUnits || 0),
+    pairPrincipal: BigInt(curve.pairReserveUnits || 0),
     taxBps: Number(l.taxBps || 0),
     lifecycle: l.lifecycle,
     graduated: !!l.graduated,
     createdAt: l.createdAt,
     createdAtBlock: l.createdBlock,
-    market: l.market || null,
+    market: l.market || (l.holderCount != null ? { holderCount: l.holderCount } : null),
     weights: l.weights || null,
     gifts: l.gifts || null,
-    launcher: l.launcherAddress,
+    launcher: l.launcherAddress || l.creatorAddress,
   };
 }
 

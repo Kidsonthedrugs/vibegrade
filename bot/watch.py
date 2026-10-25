@@ -96,7 +96,7 @@ def check_once(state: dict, post: bool = True, limit: int | None = None) -> list
     fresh: list[dict] = []
     for item in items:
         r = api.normalise(item)
-        if not r.get("graduated") or r["token"] in seen:
+        if r.get("kind") != "v6" or not r.get("graduated") or r["token"] in seen:
             continue
         fresh.append(r)
     fresh.sort(key=lambda r: ((r.get("graduation") or {}).get("at") or ""), reverse=True)

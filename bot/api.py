@@ -55,9 +55,12 @@ def eth_usd() -> float:
 
 
 def normalise(item: dict) -> dict:
-    l = item.get("launch") or item
+    # v6 items carry "launch", legacy v5 carry "token"; only v6 matches our curve constants.
+    kind = item.get("kind") or ("v6" if item.get("launch") else "v5")
+    l = item.get("launch") or item.get("token") or item
     curve = l.get("curve") or {}
     return {
+        "kind": kind,
         "token": l.get("tokenAddress"),
         "curve": l.get("curveAddress"),
         "name": l.get("name"),
@@ -73,10 +76,10 @@ def normalise(item: dict) -> dict:
         "graduated": bool(l.get("graduated")),
         "createdAt": l.get("createdAt"),
         "createdBlock": l.get("createdBlock"),
-        "market": l.get("market") or {},
+        "market": l.get("market") or ({"holderCount": l.get("holderCount")} if l.get("holderCount") is not None else {}),
         "weights": l.get("weights") or {},
         "gifts": l.get("gifts") or {},
-        "launcher": l.get("launcherAddress"),
+        "launcher": l.get("launcherAddress") or l.get("creatorAddress"),
     }
 
 

@@ -24,7 +24,7 @@ def eta_minutes(row: dict) -> float | None:
 
 def build(tab: str = "FINAL_STRETCH", limit: int = 12) -> list[dict]:
     rows = [api.normalise(i) for i in api.board(tab)]
-    rows = [r for r in rows if r["target"] > 0 and not r["graduated"]]
+    rows = [r for r in rows if r.get("kind") == "v6" and r["target"] > 0 and not r["graduated"]]
     for r in rows:
         r["toGrad"] = pair_to_graduation(r["pairPrincipal"], r["target"])
         r["progress"] = progress_bps(r["pairPrincipal"], r["target"])
