@@ -338,6 +338,7 @@ async function openToken(addr, push = true) {
         <a class="btn" href="https://testnet.vibevibe.fun/t/${r.token}" target="_blank" rel="noopener">open on vibe/vibe</a>
         <a class="btn ghost" href="https://explorer.testnet.chain.robinhood.com/address/${r.token}" target="_blank" rel="noopener">explorer</a>
         <a class="btn ghost" href="#score">score this config →</a>
+        <button class="btn ghost" data-copy="${r.token}">copy share link</button>
       </div>`;
   } catch (e) {
     panel.innerHTML = `<a class="back" href="#radar">← back</a><div class="status err">could not load ${addr}: ${e.message}</div>`;
@@ -494,6 +495,14 @@ async function boot() {
   document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
   window.addEventListener("hashchange", route);
   document.addEventListener("click", (e) => {
+    const cp = e.target.closest("[data-copy]");
+    if (cp) {
+      const url = `${location.origin}/t/${cp.dataset.copy}`;
+      navigator.clipboard?.writeText(url);
+      cp.textContent = "copied ✓";
+      setTimeout(() => (cp.textContent = "copy share link"), 1600);
+      return;
+    }
     const el = e.target.closest("[data-star]");
     if (!el) return;
     e.preventDefault();
@@ -521,6 +530,12 @@ async function boot() {
   const tick = () => ($("#clock").textContent = new Date().toUTCString().slice(17, 25) + " utc");
   tick();
   setInterval(tick, 1000);
+  const pathToken = (location.pathname.match(/^\/t\/(0x[0-9a-fA-F]{40})/) || [])[1];
+  if (pathToken) {
+    await openToken(pathToken, false);
+    setInterval(refresh, 60_000);
+    return;
+  }
   const wantTab = new URLSearchParams(location.search).get("tab");
   if (wantTab && document.querySelector(`.tab[data-tab="${wantTab}"]`)) showTab(wantTab, false);
   else if (location.hash) route();

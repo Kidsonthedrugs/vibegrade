@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/t/:addr",
+      "destination": "/api/t?addr=:addr"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://testnet.vibevibe.fun/api/:path*"
     },
@@ -25,6 +29,15 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=15"
+        }
+      ]
+    },
+    {
+      "source": "/web/fonts/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
         }
       ]
     }

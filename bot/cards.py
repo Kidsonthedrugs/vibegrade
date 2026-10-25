@@ -4,10 +4,12 @@ from functools import lru_cache
 from typing import Tuple
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-BOLD = "C:/Windows/Fonts/segoeuib.ttf"
-REG = "C:/Windows/Fonts/segoeui.ttf"
-MONO = "C:/Windows/Fonts/consolab.ttf"
-MONO_R = "C:/Windows/Fonts/consola.ttf"
+# vibe/vibe's own type kit (converted from their woff2), so cards match the product
+_ASSETS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
+BOLD = os.path.join(_ASSETS, "clashdisplay-600.ttf")
+REG = os.path.join(_ASSETS, "instrumentsans.ttf")
+MONO = os.path.join(_ASSETS, "jetbrainsmono.ttf")
+MONO_R = os.path.join(_ASSETS, "jetbrainsmono.ttf")
 
 BG = (16, 18, 20)
 CARD = (22, 25, 28)
@@ -54,6 +56,28 @@ def ellipsize(
     while txt and text_w(draw, txt + ellipsis, f) > max_width:
         txt = txt[:-1]
     return txt + ellipsis
+
+
+def wrap_lines(draw, text, f, max_width, max_lines: int = 2):
+    """Greedy word wrap by pixel width; the last line is ellipsized."""
+    words = str(text).split()
+    if not words:
+        return []
+    lines, cur = [], ""
+    for w in words:
+        cand = (cur + " " + w) if cur else w
+        if text_w(draw, cand, f) <= max_width or not cur:
+            cur = cand
+        else:
+            lines.append(cur)
+            cur = w
+            if len(lines) == max_lines:
+                break
+    if cur and len(lines) < max_lines:
+        lines.append(cur)
+    if lines and text_w(draw, lines[-1], f) > max_width:
+        lines[-1] = ellipsize(draw, lines[-1], f, max_width)
+    return lines[:max_lines]
 
 
 def cover_crop(img: Image.Image, w: int, h: int, radius: int) -> Image.Image:
@@ -245,12 +269,14 @@ def render_score_card(data: dict, out_path: str) -> str:
     notes = data.get("notes") or []
     if not isinstance(notes, (list, tuple)):
         notes = []
-    nf = font(REG, 23)
-    ny = 340
+    nf = font(REG, 22)
+    ny = 336
     for note in notes[:3]:
-        draw.rectangle([72, ny + 8, 82, ny + 18], fill=ACCENT)
-        draw.text((98, ny), ellipsize(draw, str(note), nf, 1010), font=nf, fill=TEXT)
-        ny += 40
+        lines = wrap_lines(draw, str(note), nf, 980, 2)
+        draw.rectangle([72, ny + 7, 81, ny + 16], fill=ACCENT)
+        for i, line in enumerate(lines):
+            draw.text((97, ny + i * 27), line, font=nf, fill=TEXT)
+        ny += 27 * max(1, len(lines)) + 9
 
     breakdown = data.get("breakdown")
     if isinstance(breakdown, dict) and breakdown:
@@ -263,8 +289,9 @@ def render_score_card(data: dict, out_path: str) -> str:
             except Exception:
                 val = 0.0
             rounded_panel(img, (300, y + 1, 1040, y + 8), fill=LINE, radius=4)
-            fill_w = max(2, int(740 * val / 100))
-            rounded_panel(img, (300, y + 1, 300 + fill_w, y + 8), fill=ACCENT, radius=4)
+            fill_w = int(740 * val / 100)
+            if fill_w >= 2:
+                rounded_panel(img, (300, y + 1, 300 + fill_w, y + 8), fill=ACCENT, radius=4)
             draw.text((1130, y - 1), str(int(round(val))), font=vf2, fill=TEXT, anchor="ra")
             y += 25
 
