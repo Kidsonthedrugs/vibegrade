@@ -72,7 +72,26 @@ export function normalise(item) {
     weights: l.weights || null,
     gifts: l.gifts || null,
     launcher: l.launcherAddress || l.creatorAddress,
+    netPersonal: BigInt(l.initialNetPersonalUnits || 0),
   };
+}
+
+/** Launch detail + the market block (holders, volume) which only the board carries. */
+export async function launchWithMarket(token) {
+  const target = String(token).toLowerCase();
+  const [detail, ...tabs] = await Promise.all([
+    launch(token),
+    ...TABS.map((t) => board(t).catch(() => [])),
+  ]);
+  const row = normalise({ kind: "v6", launch: detail.launch });
+  for (const tab of tabs) {
+    const hit = tab.map(normalise).find((r) => r.token && r.token.toLowerCase() === target);
+    if (hit && hit.market) {
+      row.market = hit.market;
+      break;
+    }
+  }
+  return row;
 }
 
 // IPFS gateway used by the app's own media route

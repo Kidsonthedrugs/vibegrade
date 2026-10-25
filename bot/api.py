@@ -80,6 +80,7 @@ def normalise(item: dict) -> dict:
         "weights": l.get("weights") or {},
         "gifts": l.get("gifts") or {},
         "launcher": l.get("launcherAddress") or l.get("creatorAddress"),
+        "netPersonal": int(l.get("initialNetPersonalUnits") or 0),
     }
 
 

@@ -29,6 +29,7 @@
       <button class="tab active" data-tab="radar">Radar</button>
       <button class="tab" data-tab="graduated">Graduated</button>
       <button class="tab" data-tab="trending">Trending</button>
+      <button class="tab" data-tab="score">Launch score</button>
       <span class="spacer"></span>
       <button id="refresh" class="ghost" title="refresh">↻</button>
     </nav>
@@ -56,6 +57,19 @@
           <p>By 24h activity.</p>
         </div>
         <div id="trending-grid" class="grid"></div>
+      </section>
+
+      <section id="panel-score" class="panel hidden">
+        <div class="panel-head">
+          <h2>Launch score</h2>
+          <p>Paste any vibe/vibe token address — or one of the live launches below.</p>
+        </div>
+        <div class="score-input">
+          <input id="score-addr" placeholder="0x… token address" spellcheck="false" />
+          <button id="score-go">Score it</button>
+        </div>
+        <div id="score-suggest" class="suggest"></div>
+        <div id="score-out"></div>
       </section>
 
       <div id="status" class="status"></div>

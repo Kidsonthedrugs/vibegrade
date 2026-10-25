@@ -1,5 +1,6 @@
-import { board, launch, ethUsd, normalise, mediaUrl, TABS } from "/core/api.js";
-import { pairToGraduation, progressBps, fmtEth, fmtTokens, spotPrice } from "/core/curve.js";
+import { board, launchWithMarket, ethUsd, normalise, mediaUrl } from "/core/api.js";
+import { pairToGraduation, progressBps, fmtEth, fmtTokens } from "/core/curve.js";
+import { scoreLaunch, SCORE_WEIGHTS } from "/core/score.js";
 
 const $ = (s) => document.querySelector(s);
 const WAD = 10n ** 18n;
@@ -111,6 +112,9 @@ async function loadTab(tab) {
     renderCards("#grad-grid", rows.slice(0, 12), "graduated");
     return rows.length;
   }
+  if (tab === "score") {
+    return loadScorePanel();
+  }
   if (tab === "trending") {
     const rows = (await board("TRENDING")).map(normalise).filter((r) => r.token && r.symbol);
     renderCards("#trending-grid", rows.slice(0, 12), "trending");
@@ -144,9 +148,84 @@ async function refresh() {
   }
 }
 
+function colourFor(score) {
+  if (score >= 75) return "var(--accent)";
+  if (score >= 50) return "var(--warn)";
+  return "var(--bad)";
+}
+
+function renderScore(r) {
+  const s = scoreLaunch(r);
+  const rows = Object.entries(SCORE_WEIGHTS)
+    .map(([k, w]) => {
+      const v = s.breakdown[k] ?? 0;
+      const cls = v >= 75 ? "" : v >= 50 ? "warn" : "bad";
+      return `<div class="bar-row">
+        <div class="lbl">${k} · ${w}%</div>
+        <div class="trk"><i style="width:${Math.max(v, 2)}%;background:${v >= 75 ? "var(--accent)" : v >= 50 ? "var(--warn)" : "var(--bad)"}"></i></div>
+        <div class="val">${v}</div>
+      </div>`;
+    })
+    .join("");
+  const notes = s.notes
+    .map((n, i) => `<div class="note ${i === 0 ? "bad" : i === 1 ? "warn" : ""}"><span class="dot"></span><span>${n}</span></div>`)
+    .join("");
+  return `<div class="score-top">
+      <div class="score-num" style="color:${colourFor(s.score)}">${s.score}<small>/100</small></div>
+      <div class="score-meta">
+        <div class="sym">${r.symbol || "?"}</div>
+        <div class="nm">${r.name || ""} · tax ${(Number(r.taxBps) / 100).toFixed(0)}% · ${r.pairSymbol || "?"} pair</div>
+        <div class="verdict">${s.verdict}</div>
+        <div class="eta">${s.eta}</div>
+      </div>
+    </div>
+    <div class="bars">${rows}</div>
+    <div class="notes">${notes}</div>`;
+}
+
+async function scoreToken(addr) {
+  const out = $("#score-out");
+  out.innerHTML = `<div class="status">scoring…</div>`;
+  try {
+    const r = await launchWithMarket(addr.trim());
+    out.innerHTML = renderScore(r);
+    history.replaceState(null, "", `?token=${r.token}`);
+  } catch (e) {
+    out.innerHTML = `<div class="status err">could not load that token: ${e.message}<br/>use a v6 (current generation) token address</div>`;
+  }
+}
+
+async function loadScorePanel() {
+  const q = new URLSearchParams(location.search).get("token");
+  if (q) {
+    $("#score-addr").value = q;
+    await scoreToken(q);
+  }
+  const items = (await board("FINAL_STRETCH")).map(normalise).filter((r) => r.kind === "v6" && r.token);
+  $("#score-suggest").innerHTML = items
+    .slice(0, 8)
+    .map((r) => `<button data-addr="${r.token}">${r.symbol}</button>`)
+    .join("");
+  $("#score-suggest").querySelectorAll("button").forEach((b) =>
+    b.addEventListener("click", () => {
+      $("#score-addr").value = b.dataset.addr;
+      scoreToken(b.dataset.addr);
+    })
+  );
+  if (!q && items[0]) {
+    $("#score-addr").value = items[0].token;
+    await scoreToken(items[0].token);
+  }
+  return items.length;
+}
+
 async function boot() {
   document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
   $("#refresh").addEventListener("click", refresh);
+  $("#score-go").addEventListener("click", () => scoreToken($("#score-addr").value));
+  $("#score-addr").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") scoreToken($("#score-addr").value);
+  });
   try {
     state.eth = await ethUsd();
     $("#eth").textContent = `ETH $${state.eth.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -156,7 +235,12 @@ async function boot() {
   const tick = () => ($("#clock").textContent = new Date().toUTCString().slice(17, 25) + " utc");
   tick();
   setInterval(tick, 1000);
-  await refresh();
+  const wantTab = new URLSearchParams(location.search).get("tab");
+  if (wantTab && document.querySelector(`.tab[data-tab="${wantTab}"]`)) {
+    showTab(wantTab);
+  } else {
+    await refresh();
+  }
   setInterval(refresh, 30_000);
 }
 

@@ -245,28 +245,28 @@ def render_score_card(data: dict, out_path: str) -> str:
     notes = data.get("notes") or []
     if not isinstance(notes, (list, tuple)):
         notes = []
-    nf = font(REG, 24)
-    ny = 356
+    nf = font(REG, 23)
+    ny = 340
     for note in notes[:3]:
         draw.rectangle([72, ny + 8, 82, ny + 18], fill=ACCENT)
         draw.text((98, ny), ellipsize(draw, str(note), nf, 1010), font=nf, fill=TEXT)
-        ny += 42
+        ny += 40
 
     breakdown = data.get("breakdown")
     if isinstance(breakdown, dict) and breakdown:
-        lf, vf2 = font(REG, 16), font(MONO, 16)
-        y = 496
-        for label, value in list(breakdown.items())[:4]:
+        lf, vf2 = font(REG, 15), font(MONO, 15)
+        y = 470
+        for label, value in list(breakdown.items())[:6]:
             draw.text((72, y), ellipsize(draw, str(label).upper(), lf, 210), font=lf, fill=MUTED)
             try:
                 val = max(0.0, min(100.0, float(value)))
             except Exception:
                 val = 0.0
-            rounded_panel(img, (300, y + 1, 1040, y + 9), fill=LINE, radius=4)
+            rounded_panel(img, (300, y + 1, 1040, y + 8), fill=LINE, radius=4)
             fill_w = max(2, int(740 * val / 100))
-            rounded_panel(img, (300, y + 1, 300 + fill_w, y + 9), fill=ACCENT, radius=4)
+            rounded_panel(img, (300, y + 1, 300 + fill_w, y + 8), fill=ACCENT, radius=4)
             draw.text((1130, y - 1), str(int(round(val))), font=vf2, fill=TEXT, anchor="ra")
-            y += 27
+            y += 25
 
     img.save(out_path)
     return out_path

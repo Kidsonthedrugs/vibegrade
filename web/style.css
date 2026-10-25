@@ -137,3 +137,46 @@ main { max-width: 1180px; margin: 0 auto; padding: 22px 28px 40px; }
   .row { grid-template-columns: 22px 1fr 84px; }
   .row .bar { display: none; }
 }
+
+
+/* launch score */
+.score-input { display: flex; gap: 10px; margin-bottom: 14px; }
+.score-input input {
+  flex: 1; background: var(--card); border: 1px solid var(--line); color: var(--text);
+  border-radius: 10px; padding: 12px 14px; font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px; outline: none;
+}
+.score-input input:focus { border-color: var(--accent); }
+.score-input button {
+  background: var(--accent); color: var(--bg); border: 0; border-radius: 10px;
+  padding: 0 20px; font: inherit; font-weight: 700; cursor: pointer;
+}
+.score-input button:hover { filter: brightness(1.08); }
+.suggest { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.suggest button {
+  background: var(--card); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.suggest button:hover { color: var(--accent); border-color: var(--accent); }
+
+.score-top { display: flex; align-items: flex-start; gap: 28px; margin-bottom: 22px; flex-wrap: wrap; }
+.score-num { font-size: 96px; font-weight: 800; line-height: .95; letter-spacing: -3px; }
+.score-num small { font-size: 20px; color: var(--muted); font-weight: 500; letter-spacing: 0; margin-left: 6px; }
+.score-meta { flex: 1; min-width: 260px; }
+.score-meta .sym { font-size: 22px; font-weight: 700; }
+.score-meta .nm { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.score-meta .verdict { margin-top: 12px; font-size: 17px; font-weight: 600; max-width: 620px; }
+.score-meta .eta { margin-top: 10px; font-size: 12px; color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+
+.bars { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 22px; max-width: 760px; }
+.bar-row { display: grid; grid-template-columns: 120px 1fr 44px; align-items: center; gap: 12px; }
+.bar-row .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.bar-row .trk { height: 8px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.bar-row .trk > i { display: block; height: 100%; background: var(--accent); }
+.bar-row .val { font-family: ui-monospace, Consolas, monospace; font-size: 12px; text-align: right; }
+
+.notes { display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+.note { display: flex; gap: 10px; font-size: 14px; line-height: 1.45; color: #d8dbe0; }
+.note .dot { width: 9px; height: 9px; background: var(--accent); border-radius: 2px; margin-top: 6px; flex: none; }
+.note.warn .dot { background: var(--warn); }
+.note.bad .dot { background: var(--bad); }
