@@ -356,3 +356,51 @@ def render_radar_card(rows: list[dict], out_path: str,
 
     img.save(out_path)
     return out_path
+
+
+def render_report_card(data: dict, out_path: str) -> str:
+    img = Image.new("RGB", (1200, 800), BG)
+    draw = ImageDraw.Draw(img)
+
+    # Accent bar
+    draw.rectangle([(0, 0), (6, 800)], fill=ACCENT)
+
+    # Title
+    title = ellipsize(draw, data.get("title", ""), font(BOLD, 56), 1000)
+    draw.text((72, 52), title, font=font(BOLD, 56), fill=TEXT)
+
+    # Subtitle
+    subtitle = ellipsize(draw, data.get("subtitle", ""), font(REG, 24), 1000)
+    draw.text((72, 122), subtitle, font=font(REG, 24), fill=MUTED)
+
+    # Stats grid
+    stats = data.get("stats", [])[:6]
+    for i, (value_str, label_str) in enumerate(stats):
+        row, col = divmod(i, 2)
+        cell_x = 72 if col == 0 else 628
+        cell_y = 210 + row * 170
+
+        box = (cell_x, cell_y, cell_x + 500, cell_y + 150)
+        rounded_panel(img, box, CARD, 16)
+
+        value = ellipsize(draw, str(value_str), font(MONO, 54), 440)
+        draw.text((cell_x + 28, cell_y + 30), value, font=font(MONO, 54), fill=TEXT)
+
+        label = ellipsize(draw, str(label_str), font(REG, 20), 440)
+        draw.text((cell_x + 28, cell_y + 104), label, font=font(REG, 20), fill=MUTED)
+
+    # Note
+    note = data.get("note")
+    if note is not None:
+        note_text = ellipsize(draw, str(note), font(REG, 22), 1000)
+        draw.text((72, 660), note_text, font=font(REG, 22), fill=TEXT)
+
+    # Separator
+    draw.line([(72, 700), (1128, 700)], fill=LINE, width=1)
+
+    # Footer
+    footer_text = ellipsize(draw, data.get("footer", "vibegrade"), font(MONO, 20), 1000)
+    draw.text((72, 730), footer_text, font=font(MONO, 20), fill=MUTED)
+
+    img.save(out_path)
+    return out_path
