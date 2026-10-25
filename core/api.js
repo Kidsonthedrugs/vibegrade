@@ -3,7 +3,9 @@
 // Nekoray proxy, use bot/*.py instead (urllib honours the proxy explicitly).
 
 export const CHAIN_ID = 46630;
-const BASE = "https://testnet.vibevibe.fun";
+// Same-origin: /api and /media are proxied to the app by vercel.json (prod)
+// and by scripts/serve.mjs (local). Avoids CORS and country-level blocking.
+const BASE = "";
 const TTL = 30_000;
 
 const cache = new Map();
@@ -70,4 +72,4 @@ export function normalise(item) {
 
 // IPFS gateway used by the app's own media route
 export const mediaUrl = (cid, variant = "card.webp") =>
-  cid ? BASE.replace("https://", "https://") + `/media/${cid.replace("ipfs://", "")}.${variant}` : null;
+  cid ? `${BASE}/media/${cid.replace("ipfs://", "")}.${variant}` : null;

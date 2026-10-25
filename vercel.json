@@ -1,0 +1,32 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://testnet.vibevibe.fun/api/:path*"
+    },
+    {
+      "source": "/media/:path*",
+      "destination": "https://testnet.vibevibe.fun/media/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/media/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=15"
+        }
+      ]
+    }
+  ]
+}
