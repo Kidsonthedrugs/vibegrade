@@ -6,7 +6,14 @@
     <title>VibeGrade · graduation radar for vibe/vibe</title>
     <meta name="description" content="Exact distance to graduation for every live vibe/vibe launch on Robinhood Chain Testnet." />
     <meta property="og:title" content="VibeGrade" />
-    <meta property="og:description" content="Exact distance to graduation for every live vibe/vibe launch." />
+    <meta property="og:description" content="Exact distance to graduation for every live vibe/vibe launch — computed from the bonding curve, verified to the wei." />
+    <meta property="og:image" content="https://vibegrade-eta.vercel.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VibeGrade · graduation radar for vibe/vibe" />
+    <meta name="twitter:description" content="Exact distance to graduation for every live vibe/vibe launch. Plus a 0–100 launch score." />
+    <meta name="twitter:image" content="https://vibegrade-eta.vercel.app/og.png" />
     <link rel="stylesheet" href="/web/style.css" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23dff902'/%3E%3Ctext x='7' y='23' font-family='sans-serif' font-size='18' font-weight='bold' fill='%23101214'%3Evg%3C/text%3E%3C/svg%3E" />
   </head>
@@ -30,6 +37,7 @@
       <button class="tab" data-tab="graduated">Graduated</button>
       <button class="tab" data-tab="trending">Trending</button>
       <button class="tab" data-tab="score">Launch score</button>
+      <button class="tab" data-tab="about">How it works</button>
       <span class="spacer"></span>
       <button id="refresh" class="ghost" title="refresh">↻</button>
     </nav>
@@ -70,6 +78,45 @@
         </div>
         <div id="score-suggest" class="suggest"></div>
         <div id="score-out"></div>
+      </section>
+
+      <section id="panel-token" class="panel hidden"></section>
+
+      <section id="panel-about" class="panel hidden">
+        <div class="panel-head">
+          <h2>How this works</h2>
+          <p>No black box. Every number below is reproducible from the chain.</p>
+        </div>
+        <div class="prose">
+          <h3>The curve</h3>
+          <p>vibe/vibe V6 launches are constant-product curves on <em>virtual</em> reserves. The
+          constants are fixed by the protocol, not by the creator:</p>
+          <pre>VT0 = 800M × 4/3        virtual token reserve
+V0  = target / 3        virtual pair reserve (target = 4 ETH on ETH pairs)
+k   = VT0 × V0</pre>
+          <h3>Buying</h3>
+          <pre>netIn     = amountIn × 10000 / (10000 + taxBps)   ← fee on top
+tokensOut = (VT0 − sold) − k / (V0 + pairPrincipal + netIn)
+price     = (V0 + pairPrincipal) / (VT0 − sold)</pre>
+          <h3>Selling</h3>
+          <pre>proceeds = (V0 + pairPrincipal) × tokens / ((VT0 − sold) + tokens)
+net      = proceeds − proceeds × taxBps / 10000    ← fee off proceeds</pre>
+          <h3>Why graduation has no price gap</h3>
+          <p>When <code>pairPrincipal = target</code>, solving the equation gives
+          <code>sold = 800,000,000</code> exactly, and the curve price equals the Uniswap v4
+          pool's opening price (<code>2e-8 ETH/token</code>). The token does not jump at the
+          moment it graduates.</p>
+          <h3>Verified, not assumed</h3>
+          <p>These formulas were checked against the contract's own <code>quoteBuyExactIn</code>
+          and <code>quoteSell</code>: token amounts match to a relative error of ~1e-16, sells
+          to 1 wei of integer rounding. The test suite runs on captured on-chain quotes.</p>
+          <h3>Launch score</h3>
+          <p>Six components, weighted and published: tax fit (20), weight balance (25),
+          graduation airdrop (20), pair choice (10), opening buy (15), distribution (10).
+          It is advice about configuration quality — not a prediction of price or returns.</p>
+          <p class="fine">Unofficial community tool. Not affiliated with vibe/vibe, Seedify or
+          Robinhood. Read-only: it never asks for a wallet.</p>
+        </div>
       </section>
 
       <div id="status" class="status"></div>

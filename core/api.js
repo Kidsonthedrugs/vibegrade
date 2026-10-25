@@ -12,14 +12,24 @@ const cache = new Map();
 async function getJSON(path) {
   const hit = cache.get(path);
   if (hit && Date.now() - hit.t < TTL) return hit.v;
-  const res = await fetch(BASE + path, {
-    headers: { accept: "application/json" },
-    credentials: "omit",
-  });
-  if (!res.ok) throw new Error(`${res.status} ${path}`);
-  const json = await res.json();
-  cache.set(path, { t: Date.now(), v: json });
-  return json;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const res = await fetch(BASE + path, {
+      headers: { accept: "application/json" },
+      credentials: "omit",
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(`${res.status} ${path}`);
+    const json = await res.json();
+    cache.set(path, { t: Date.now(), v: json });
+    return json;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error(`timeout ${path}`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export const TABS = ["TRENDING", "NEW", "FINAL_STRETCH", "GRADUATED", "MOVERS"];
@@ -60,6 +70,7 @@ export function normalise(item) {
     image: l.content?.image?.uri || null,
     pairSymbol: l.pairSymbol,
     pairIsNative: l.pairIsNative,
+    pairCurrencyAddress: l.pairCurrencyAddress || null,
     target: BigInt(l.targetPairUnits || 0),
     sold: BigInt(curve.tokensSoldGrossUnits || 0),
     pairPrincipal: BigInt(curve.pairReserveUnits || 0),
@@ -75,6 +86,15 @@ export function normalise(item) {
     netPersonal: BigInt(l.initialNetPersonalUnits || 0),
   };
 }
+
+export async function candles(token, interval = "15m") {
+  const j = await getJSON(
+    `/api/v1/chains/${CHAIN_ID}/v6/launches/${encodeURIComponent(token)}/candles?interval=${interval}`
+  );
+  return (j.data && j.data.items) || [];
+}
+
+export const shortAddr = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "?");
 
 /** Launch detail + the market block (holders, volume) which only the board carries. */
 export async function launchWithMarket(token) {

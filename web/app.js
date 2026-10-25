@@ -1,4 +1,4 @@
-import { board, launchWithMarket, ethUsd, normalise, mediaUrl } from "/core/api.js";
+import { board, launchWithMarket, candles, ethUsd, normalise, mediaUrl, shortAddr } from "/core/api.js";
 import { pairToGraduation, progressBps, fmtEth, fmtTokens } from "/core/curve.js";
 import { scoreLaunch, SCORE_WEIGHTS } from "/core/score.js";
 
@@ -20,9 +20,20 @@ function eta(row) {
   return ">4d";
 }
 
+const pairLabels = new Map();
+function pairLabel(row) {
+  const sym = row.pairSymbol;
+  if (sym) {
+    if (row.pairCurrencyAddress) pairLabels.set(String(row.pairCurrencyAddress).toLowerCase(), sym);
+    return sym;
+  }
+  const known = row.pairCurrencyAddress && pairLabels.get(String(row.pairCurrencyAddress).toLowerCase());
+  return known || shortAddr(row.pairCurrencyAddress);
+}
+
 function toGradText(row) {
   const v = pairToGraduation(row);
-  return row.pairIsNative ? `${fmtEth(v, 4)} ETH` : `${fmtTokens(v)} ${(row.pairSymbol || "?").slice(0, 5)}`;
+  return row.pairIsNative ? `${fmtEth(v, 4)} ETH` : `${fmtTokens(v)} ${pairLabel(row).slice(0, 6)}`;
 }
 
 function art(row, cls = "") {
@@ -40,7 +51,7 @@ function renderRadar(rows) {
   list.innerHTML = rows
     .map((r, i) => {
       const p = progressBps(r) / 100;
-      return `<div class="row">
+      return `<a class="row" href="#token/${r.token}">
         <div class="rank">${String(i + 1).padStart(2, "0")}</div>
         <div class="tok">
           ${mediaUrl(r.image, "sq410.webp") ? `<img loading="lazy" src="${mediaUrl(r.image, "sq410.webp")}" alt=""/>` : ""}
@@ -49,11 +60,11 @@ function renderRadar(rows) {
             <div class="nm">${r.name || ""}</div>
           </div>
         </div>
-        <div class="pair">${(r.pairSymbol || "?").slice(0, 6)}</div>
+        <div class="pair">${pairLabel(r).slice(0, 6)}</div>
         <div class="bar" title="${p.toFixed(2)}%"><i style="width:${Math.min(p, 100).toFixed(2)}%"></i></div>
         <div class="num">${toGradText(r)}</div>
         <div class="num muted eta">${eta(r)}</div>
-      </div>`;
+      </a>`;
     })
     .join("");
 }
@@ -79,7 +90,7 @@ function renderCards(target, rows, kind) {
           : kind === "graduated"
           ? `<span><b>${fmtEth(BigInt(grad.pairUnits || 0), 2)}</b> raised</span>`
           : `<span><b>${toGradText(r)}</b> to go</span>`;
-      return `<a class="card" href="https://testnet.vibevibe.fun/t/${r.token}" target="_blank" rel="noopener">
+      return `<a class="card" href="#token/${r.token}">
         ${art(r)}
         <div class="body">
           <div class="title"><b>${r.symbol}</b>${badge}</div>
@@ -123,12 +134,15 @@ async function loadTab(tab) {
   return loadRadar();
 }
 
-function showTab(tab) {
+function showTab(tab, push = true) {
+  const panel = document.getElementById(`panel-${tab}`);
+  if (!panel) return;
   state.tab = tab;
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".panel").forEach((p) => p.classList.add("hidden"));
-  $(`#panel-${tab}`).classList.remove("hidden");
-  refresh();
+  panel.classList.remove("hidden");
+  if (push && location.hash !== `#${tab}`) history.replaceState(null, "", `#${tab}`);
+  if (tab !== "token") refresh();
 }
 
 async function refresh() {
@@ -139,7 +153,11 @@ async function refresh() {
   st.textContent = "loading…";
   try {
     const n = await loadTab(state.tab);
-    st.textContent = `${n} launches · updated ${new Date().toLocaleTimeString()}`;
+    if (["radar", "graduated", "trending", "score"].includes(state.tab)) {
+      st.textContent = `${n} launches · updated ${new Date().toLocaleTimeString()}`;
+    } else {
+      st.textContent = "";
+    }
   } catch (e) {
     st.className = "status err";
     st.textContent = `error: ${e.message}`;
@@ -219,8 +237,116 @@ async function loadScorePanel() {
   return items.length;
 }
 
+function niceNum(v) {
+  if (!isFinite(v)) return "—";
+  const a = Math.abs(v);
+  if (a >= 1e-4) return v.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+  return v.toExponential(2);
+}
+
+function chartSVG(items, label) {
+  const vals = items.map((i) => {
+    const raw = i.closePriceWeiPerToken ?? i.closePriceQuoteBaseUnitsPerToken;
+    return raw == null ? null : Number(raw) / 1e18;
+  });
+  const valid = vals.filter((v) => v != null && isFinite(v) && v > 0);
+  if (valid.length < 2) return `<div class="chart-empty">no trades in this window yet</div>`;
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  const W = 1080;
+  const H = 260;
+  const pad = 10;
+  const sx = (i) => pad + (i / Math.max(1, vals.length - 1)) * (W - pad * 2);
+  const sy = (v) => (max === min ? H / 2 : H - pad - ((v - min) / (max - min)) * (H - pad * 2));
+  let path = "";
+  let seg = [];
+  vals.forEach((v, i) => {
+    if (v == null || !isFinite(v) || v <= 0) {
+      if (seg.length) path += `M${seg.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join("L")}`;
+      seg = [];
+      return;
+    }
+    seg.push([sx(i), sy(v)]);
+  });
+  if (seg.length) path += `M${seg.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join("L")}`;
+  const first = valid[0];
+  const last = valid[valid.length - 1];
+  const chg = ((last - first) / first) * 100;
+  const up = chg >= 0;
+  return `<div class="chart-head">
+      <span class="chart-price">${niceNum(last)} <small>${label}/token</small></span>
+      <span class="chart-chg" style="color:${up ? "var(--accent)" : "var(--bad)"}">
+        ${up ? "+" : ""}${chg.toFixed(1)}% over the window</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="chart">
+      <path d="${path}" fill="none" stroke="${up ? "#dff902" : "#ff5c5c"}" stroke-width="2.5"
+            stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <div class="chart-axis"><span>${niceNum(min)}</span><span>${niceNum(max)}</span></div>`;
+}
+
+async function openToken(addr, push = true) {
+  const panel = $("#panel-token");
+  document.querySelectorAll(".panel").forEach((p) => p.classList.add("hidden"));
+  panel.classList.remove("hidden");
+  document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+  state.tab = "token";
+  if (push) history.replaceState(null, "", `#token/${addr}`);
+  panel.innerHTML = `<div class="status">loading token…</div>`;
+  try {
+    const [r, ks] = await Promise.all([launchWithMarket(addr), candles(addr).catch(() => [])]);
+    const sc = scoreLaunch(r);
+    const label = pairLabel(r);
+    const art = mediaUrl(r.image, "sq544.webp");
+    const done = r.graduated || progressBps(r) >= 10000;
+    const m = r.market || {};
+    const volRaw = BigInt(Math.trunc(Number(m.volume24hPairUnits || 0)));
+    panel.innerHTML = `
+      <a class="back" href="#radar">← back to radar</a>
+      <div class="tok-head">
+        <div class="tok-art">${art ? `<img src="${art}" alt=""/>` : (r.symbol || "?").slice(0, 2)}</div>
+        <div class="tok-id">
+          <h2>${r.symbol}</h2>
+          <p>${r.name || ""}</p>
+          <div class="chips">
+            <span class="chip">${done ? "graduated" : "on the curve"}</span>
+            <span class="chip">tax ${(Number(r.taxBps) / 100).toFixed(0)}%</span>
+            <span class="chip">${label} pair</span>
+            ${r.kind === "v6" ? "" : '<span class="chip warn">legacy v5</span>'}
+          </div>
+        </div>
+      </div>
+      <div class="tok-stats">
+        <div><b>${done ? "complete" : toGradText(r)}</b><span>${done ? "curve closed" : "to graduation"}</span></div>
+        <div><b>${(m.holderCount ?? 0).toLocaleString()}</b><span>holders</span></div>
+        <div><b>${fmtTokens(volRaw)}</b><span>24h volume (${label})</span></div>
+        <div><b style="color:${sc.score >= 75 ? "var(--accent)" : sc.score >= 50 ? "var(--warn)" : "var(--bad)"}">${sc.score}</b><span>launch score</span></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress"><i style="width:${Math.min(100, progressBps(r) / 100)}%"></i></div>
+        <span>${(progressBps(r) / 100).toFixed(2)}% of the way to graduation</span>
+      </div>
+      <div class="chart-box">${chartSVG(ks, label)}</div>
+      <div class="tok-actions">
+        <a class="btn" href="https://testnet.vibevibe.fun/t/${r.token}" target="_blank" rel="noopener">open on vibe/vibe</a>
+        <a class="btn ghost" href="https://explorer.testnet.chain.robinhood.com/address/${r.token}" target="_blank" rel="noopener">explorer</a>
+        <a class="btn ghost" href="#score">score this config →</a>
+      </div>`;
+  } catch (e) {
+    panel.innerHTML = `<a class="back" href="#radar">← back</a><div class="status err">could not load ${addr}: ${e.message}</div>`;
+  }
+}
+
+function route() {
+  const h = (location.hash || "").replace(/^#/, "");
+  if (h.startsWith("token/")) return openToken(h.slice(6), false);
+  if (h && document.querySelector(`.tab[data-tab="${h}"]`)) return showTab(h, false);
+  return showTab("radar", false);
+}
+
 async function boot() {
   document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  window.addEventListener("hashchange", route);
   $("#refresh").addEventListener("click", refresh);
   $("#score-go").addEventListener("click", () => scoreToken($("#score-addr").value));
   $("#score-addr").addEventListener("keydown", (e) => {
@@ -236,11 +362,9 @@ async function boot() {
   tick();
   setInterval(tick, 1000);
   const wantTab = new URLSearchParams(location.search).get("tab");
-  if (wantTab && document.querySelector(`.tab[data-tab="${wantTab}"]`)) {
-    showTab(wantTab);
-  } else {
-    await refresh();
-  }
+  if (wantTab && document.querySelector(`.tab[data-tab="${wantTab}"]`)) showTab(wantTab, false);
+  else if (location.hash) route();
+  else await refresh();
   setInterval(refresh, 30_000);
 }
 

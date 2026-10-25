@@ -180,3 +180,106 @@ main { max-width: 1180px; margin: 0 auto; padding: 22px 28px 40px; }
 .note .dot { width: 9px; height: 9px; background: var(--accent); border-radius: 2px; margin-top: 6px; flex: none; }
 .note.warn .dot { background: var(--warn); }
 .note.bad .dot { background: var(--bad); }
+
+
+/* ---------- token view ---------- */
+a.row { color: inherit; text-decoration: none; }
+.back {
+  display: inline-block; color: var(--muted); font-size: 13px; margin-bottom: 16px;
+}
+.back:hover { color: var(--accent); text-decoration: none; }
+.tok-head { display: flex; gap: 18px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+.tok-art {
+  width: 96px; height: 96px; border-radius: 18px; background: var(--card-2);
+  display: grid; place-items: center; font-size: 30px; font-weight: 800; color: var(--accent);
+  overflow: hidden; flex: none;
+}
+.tok-art img { width: 100%; height: 100%; object-fit: cover; }
+.tok-id h2 { margin: 0; font-size: 34px; letter-spacing: -0.6px; }
+.tok-id p { margin: 2px 0 8px; color: var(--muted); font-size: 14px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  font-size: 11px; padding: 4px 9px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted); background: var(--card);
+}
+.chip.warn { color: var(--warn); border-color: var(--warn); }
+
+.tok-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px;
+}
+.tok-stats > div {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+}
+.tok-stats b { display: block; font-size: 24px; font-family: ui-monospace, Consolas, monospace; }
+.tok-stats span { color: var(--muted); font-size: 11px; }
+
+.progress-wrap { margin-bottom: 22px; }
+.progress { height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--accent); }
+.progress-wrap span {
+  display: block; margin-top: 6px; font-size: 11px; color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.chart-box {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 16px 10px; margin-bottom: 18px;
+}
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.chart-price { font-family: ui-monospace, Consolas, monospace; font-size: 20px; }
+.chart-price small { color: var(--muted); font-size: 11px; }
+.chart-chg { font-size: 12px; font-family: ui-monospace, Consolas, monospace; }
+.chart { width: 100%; height: 220px; display: block; }
+.chart-axis {
+  display: flex; justify-content: space-between; color: var(--muted);
+  font-size: 10px; font-family: ui-monospace, Consolas, monospace; padding: 4px 2px 0;
+}
+.chart-empty { color: var(--muted); font-size: 13px; padding: 40px 0; text-align: center; }
+
+.tok-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn {
+  display: inline-block; padding: 10px 16px; border-radius: 10px; font-size: 13px;
+  background: var(--accent); color: var(--bg); font-weight: 700; text-decoration: none;
+}
+.btn:hover { filter: brightness(1.08); text-decoration: none; }
+.btn.ghost {
+  background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 500;
+}
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- how it works ---------- */
+.prose { max-width: 780px; }
+.prose h3 { margin: 26px 0 8px; font-size: 16px; letter-spacing: -0.2px; }
+.prose p { color: #c9ced6; font-size: 14px; line-height: 1.6; margin: 0 0 10px; }
+.prose pre {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; overflow-x: auto; font-size: 12px; line-height: 1.7;
+  font-family: ui-monospace, Consolas, monospace; color: #dfe3e8;
+}
+.prose code {
+  background: var(--card-2); padding: 1px 5px; border-radius: 5px;
+  font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+}
+.prose .fine { color: var(--muted); font-size: 12px; margin-top: 24px; }
+
+/* ---------- mobile polish ---------- */
+@media (max-width: 900px) {
+  .tok-stats { grid-template-columns: repeat(2, 1fr); }
+  .chart { height: 180px; }
+}
+@media (max-width: 600px) {
+  .brand h1 { font-size: 17px; }
+  .brand p { display: none; }
+  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; }
+  .panel-head h2 { font-size: 20px; }
+  .row { grid-template-columns: 20px 1fr 92px; gap: 10px; padding: 12px 8px; }
+  .row .num { font-size: 12px; }
+  .tok-id h2 { font-size: 26px; }
+  .tok-art { width: 72px; height: 72px; border-radius: 14px; }
+  .score-top { gap: 14px; }
+  .score-num { font-size: 72px; }
+  .bar-row { grid-template-columns: 92px 1fr 34px; gap: 8px; }
+  .bar-row .lbl { font-size: 10px; }
+}

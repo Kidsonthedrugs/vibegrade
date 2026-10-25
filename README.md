@@ -10,8 +10,10 @@ Unofficial community tool. No affiliation with vibe/vibe, Seedify or Robinhood.
    its bonding curve. The numbers come from the curve, not from volume guesses.
 2. **Graduated** — a feed of completed curves, each with time-to-graduation, holders
    and volume.
-3. **Telegram** — `@VibeGraduation` posts a rendered card for every new graduation.
-4. **Launch score** *(next)* — a 0–100 score + three concrete fixes before you launch.
+3. **Token page** — price chart from 15m candles, exact progress, holder and volume stats.
+4. **Launch score** — a 0–100 score with six published components and three concrete fixes.
+5. **How it works** — the full curve math, so anyone can check the numbers.
+6. **Telegram** — `@VibeGraduation` posts a card for every new graduation, plus a weekly report.
 
 ## The math (reverse-engineered, verified to the wei)
 
