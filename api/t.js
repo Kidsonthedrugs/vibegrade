@@ -6,6 +6,14 @@ const ORIGIN = "https://vibegrade-eta.vercel.app";
 const API = "https://testnet.vibevibe.fun/api/v1/chains/46630";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0 Safari/537.36";
 
+const compact = (n) => {
+  if (!isFinite(n)) return "0";
+  if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.00$/, "") + "B";
+  if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.00$/, "") + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K";
+  return n.toFixed(n < 1 ? 4 : 2).replace(/\.00$/, "");
+};
+
 const esc = (s) =>
   String(s || "")
     .replace(/&/g, "&amp;")
@@ -43,8 +51,8 @@ export default async function handler(req, res) {
         const holders = l.market?.holderCount ?? l.holderCount ?? null;
         title = `${l.symbol} · ${prog.toFixed(1)}% to graduation · VibeGrade`;
         desc =
-          `${l.name || l.symbol} — ${left.toFixed(left < 1 ? 4 : 2)} ${pair} left on the curve, ` +
-          `${(sold / 1e6).toFixed(1)}M of 800M sold, ${prog.toFixed(1)}% to graduation` +
+          `${l.name || l.symbol} — ${compact(left)} ${pair} left on the curve, ` +
+          `${compact(sold)} of 800M sold, ${prog.toFixed(1)}% to graduation` +
           (holders ? `, ${holders} holders.` : ".");
       }
     } catch {
