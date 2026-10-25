@@ -1,0 +1,79 @@
+VIBEGRADE — NANO BANANA PROMPT PACK
+===================================
+Send ONE prompt at a time. Each block below is copy-paste ready:
+copy everything between the >>> and <<< markers, nothing else.
+
+Aspect ratios:  cards / OG = 16:9 (crop to 1200x630)  ·  icon = 1:1 (512x512)
+Brand colours to keep in every prompt:  background #101214  ·  accent #dff902
+
+Do NOT ask it to draw the word "VibeGrade". Generated type is always wrong —
+add text later in the layout.
+
+---------------------------------------------------------------
+1) HERO / SOCIAL ARTWORK   (use this one first)
+---------------------------------------------------------------
+>>>
+A cinematic 3D render on a near-black background (#101214) of a small glossy
+charcoal creature with two round ears and a soft rounded body - a friendly mascot,
+not scary - standing on a thin lime-green (#dff902) ascending line chart made of
+three steps. The creature looks up at a single small glowing lime dot floating
+above the last step, as if about to reach it. Matte clay material, subtle rim light
+in lime, soft studio lighting from the upper left, faint film grain, shallow depth
+of field. Composition: creature and chart on the RIGHT third, the LEFT two thirds
+almost empty dark negative space for text. Minimal, premium, product-launch
+aesthetic. Aspect ratio 16:9. No text, no logos, no watermarks.
+<<<
+
+---------------------------------------------------------------
+2) APP ICON / LOGO MARK
+---------------------------------------------------------------
+>>>
+A flat vector app icon: a lime-green (#dff902) rounded square (corner radius 26%)
+containing three dark near-black (#101214) ascending bars with rounded ends, and a
+small dark dot floating above the tallest bar, suggesting growth and graduation.
+Extremely simple, geometric, perfectly centered, thick even strokes, generous
+padding, no gradients, no shadows, no text, no 3D. Crisp edges suitable for a
+512x512 app icon. Square 1:1.
+<<<
+
+---------------------------------------------------------------
+3) CARD BACKGROUND TEXTURE  (for Telegram cards)
+---------------------------------------------------------------
+>>>
+Abstract dark texture on a #101214 background: a very faint lime-green (#dff902)
+topographic contour map of a rising hill, drawn with thin 2px lines at 4% opacity,
+plus a soft diagonal light sweep from the top-left corner and fine film grain.
+Almost black, calm, premium, non-distracting. It must stay perfectly readable under
+white text. 16:9, no text, no objects, no people.
+<<<
+
+---------------------------------------------------------------
+4) CHARACTER SET, vibe vibers STYLE  (for community posts)
+---------------------------------------------------------------
+>>>
+Three tiny collector-character illustrations in one consistent style: rounded blob
+bodies, simple dot eyes, one wearing a tiny chef hat, one holding a small rising
+chart, one wearing a graduation cap. Same palette - lime (#dff902) accents on a
+near-black (#101214) background. Flat 2.5D vector shading, thick clean outlines,
+playful but premium. Arranged in a row with even spacing on a dark background.
+16:9. No text.
+<<<
+
+---------------------------------------------------------------
+5) OG IMAGE, SAFE VARIANT  (if prompt 1 is too busy)
+---------------------------------------------------------------
+>>>
+Ultra-minimal dark composition, background #101214 with a subtle vertical
+lime-green (#dff902) gradient glow in the bottom-right corner and one thin lime
+ascending line chart crossing the lower third. Enormous empty space above the line
+for text. Cinematic, matte, high contrast, no objects, no characters, no text.
+Aspect ratio 16:9.
+<<<
+
+===============================================================
+TIPS
+- Too busy? append:  "simplify, fewer elements, more empty space"
+- Wrong colours? repeat the hex codes and add: "only these two colours"
+- Text appearing anyway? add: "no letters, no words, no typography"
+- Need it wider for a banner? change to "Aspect ratio 21:9"
+===============================================================
