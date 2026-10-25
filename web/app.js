@@ -1,5 +1,5 @@
-import { board, launchWithMarket, candles, ethUsd, normalise, mediaUrl, shortAddr } from "/core/api.js";
-import { pairToGraduation, progressBps, fmtEth, fmtTokens } from "/core/curve.js";
+import { board, launchWithMarket, candles, ethUsd, normalise, mediaUrl, shortAddr, walletTokens } from "/core/api.js";
+import { pairToGraduation, progressBps, fmtEth, fmtTokens, spotPrice, virtualPair, virtualToken } from "/core/curve.js";
 import { scoreLaunch, SCORE_WEIGHTS } from "/core/score.js";
 
 const $ = (s) => document.querySelector(s);
@@ -64,6 +64,7 @@ function renderRadar(rows) {
         <div class="bar" title="${p.toFixed(2)}%"><i style="width:${Math.min(p, 100).toFixed(2)}%"></i></div>
         <div class="num">${toGradText(r)}</div>
         <div class="num muted eta">${eta(r)}</div>
+        <span class="star ${isWatched(r.token) ? "on" : ""}" data-star="${r.token}">${isWatched(r.token) ? "★" : "☆"}</span>
       </a>`;
     })
     .join("");
@@ -125,6 +126,9 @@ async function loadTab(tab) {
   }
   if (tab === "score") {
     return loadScorePanel();
+  }
+  if (tab === "wallet") {
+    return loadWatchPanel();
   }
   if (tab === "trending") {
     const rows = (await board("TRENDING")).map(normalise).filter((r) => r.token && r.symbol);
@@ -327,6 +331,9 @@ async function openToken(addr, push = true) {
         <span>${(progressBps(r) / 100).toFixed(2)}% of the way to graduation</span>
       </div>
       <div class="chart-box">${chartSVG(ks, label)}</div>
+      <button class="watch-btn ${isWatched(r.token) ? "on" : ""}" data-star="${r.token}">
+        ${isWatched(r.token) ? "★ watching" : "☆ watch"}
+      </button>
       <div class="tok-actions">
         <a class="btn" href="https://testnet.vibevibe.fun/t/${r.token}" target="_blank" rel="noopener">open on vibe/vibe</a>
         <a class="btn ghost" href="https://explorer.testnet.chain.robinhood.com/address/${r.token}" target="_blank" rel="noopener">explorer</a>
@@ -344,11 +351,164 @@ function route() {
   return showTab("radar", false);
 }
 
+const WATCH_KEY = "vg_watch";
+const WALLET_KEY = "vg_wallet";
+
+function watchList() {
+  try {
+    return JSON.parse(localStorage.getItem(WATCH_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function isWatched(token) {
+  return watchList().some((t) => String(t).toLowerCase() === String(token).toLowerCase());
+}
+function toggleWatch(token) {
+  const t = String(token).toLowerCase();
+  const list = watchList();
+  const i = list.findIndex((x) => String(x).toLowerCase() === t);
+  if (i >= 0) list.splice(i, 1);
+  else list.push(t);
+  localStorage.setItem(WATCH_KEY, JSON.stringify(list));
+  return i < 0;
+}
+
+/** value of a holding, priced off the curve itself (exact) when the token is still on it */
+function holdingValue(row, amountRaw, decimals) {
+  if (!row || row.graduated) return null;
+  try {
+    const amount = (amountRaw * 10n ** 18n) / 10n ** BigInt(decimals);
+    const price = spotPrice(row);
+    return { pair: (amount * price) / 10n ** 18n, pairSymbol: pairLabel(row) };
+  } catch {
+    return null;
+  }
+}
+
+function positionRow(row, amountRaw, decimals) {
+  const prog = progressBps(row);
+  const val = holdingValue(row, amountRaw, decimals);
+  const amount = Number(amountRaw) / 10 ** decimals;
+  return `<a class="row wallet-row" href="#token/${row.token}">
+      <div class="rank">${row.graduated ? "✓" : (prog / 100).toFixed(0) + "%"}</div>
+      <div class="tok">
+        ${mediaUrl(row.image, "sq410.webp") ? `<img loading="lazy" src="${mediaUrl(row.image, "sq410.webp")}" alt=""/>` : ""}
+        <div style="min-width:0">
+          <div class="sym">${row.symbol}</div>
+          <div class="nm">${fmtTokens(BigInt(Math.trunc(amount * 1e6)) * 10n ** 12n)} tokens</div>
+        </div>
+      </div>
+      <div class="pair">${pairLabel(row).slice(0, 6)}</div>
+      <div class="bar"><i style="width:${Math.min(100, prog / 100).toFixed(1)}%"></i></div>
+      <div class="num">${row.graduated ? "graduated" : toGradText(row)}</div>
+      <div class="num muted eta">${val ? fmtTokens(val.pair) + " " + val.pairSymbol.slice(0, 6) : "—"}</div>
+    </a>`;
+}
+
+async function loadWatchPanel() {
+  const q = new URLSearchParams(location.search).get("wallet");
+  if (q) localStorage.setItem(WALLET_KEY, q);
+  const saved = localStorage.getItem(WALLET_KEY);
+  if (saved) $("#wallet-addr").value = saved;
+  await renderWatchList();
+  if (saved) await loadWallet(saved);
+  return watchList().length;
+}
+
+async function renderWatchList() {
+  const list = watchList();
+  const out = $("#watch-out");
+  if (!list.length) {
+    out.innerHTML = `<div class="status">nothing watched yet — hit ☆ on any launch to follow it</div>`;
+    return;
+  }
+  const rows = [];
+  for (const tab of ["FINAL_STRETCH", "TRENDING", "NEW", "GRADUATED"]) {
+    try {
+      for (const r of (await board(tab)).map(normalise)) {
+        if (r.kind === "v6" && list.includes(String(r.token).toLowerCase())) rows.push(r);
+      }
+    } catch {}
+  }
+  const seen = new Set();
+  const uniq = rows.filter((r) => (seen.has(r.token) ? false : seen.add(r.token)));
+  uniq.sort((a, b) => progressBps(b) - progressBps(a));
+  out.innerHTML = uniq
+    .map(
+      (r) => `<a class="row" href="#token/${r.token}">
+        <div class="rank">${String(progressBps(r) / 100 | 0).padStart(3, " ")}%</div>
+        <div class="tok"><div style="min-width:0">
+          <div class="sym">${r.symbol}</div><div class="nm">${r.name || ""}</div></div></div>
+        <div class="pair">${pairLabel(r).slice(0, 6)}</div>
+        <div class="bar"><i style="width:${Math.min(100, progressBps(r) / 100).toFixed(1)}%"></i></div>
+        <div class="num">${r.graduated ? "graduated" : toGradText(r)}</div>
+        <div class="num muted eta">${eta(r)}</div>
+      </a>`
+    )
+    .join("");
+}
+
+async function loadWallet(addr) {
+  const a = String(addr || "").trim();
+  const out = $("#wallet-out");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(a)) {
+    out.innerHTML = `<div class="status err">that is not a wallet address</div>`;
+    return;
+  }
+  localStorage.setItem(WALLET_KEY, a);
+  out.innerHTML = `<div class="status">reading balances from the explorer…</div>`;
+  try {
+    const [balances, ...tabs] = await Promise.all([
+      walletTokens(a),
+      ...["FINAL_STRETCH", "TRENDING", "NEW", "GRADUATED", "MOVERS"].map((t) => board(t).catch(() => [])),
+    ]);
+    const index = new Map();
+    for (const tab of tabs) {
+      for (const r of tab.map(normalise)) {
+        if (r.kind === "v6" && r.token && !index.has(r.token)) index.set(r.token.toLowerCase(), r);
+      }
+    }
+    const mine = balances
+      .map((b) => ({ b, row: index.get(b.token) }))
+      .filter((x) => x.row);
+    if (!mine.length) {
+      out.innerHTML = `<div class="status">no vibe/vibe launches in this wallet (checked ${balances.length} tokens on chain)</div>`;
+      return;
+    }
+    mine.sort((x, y) => progressBps(y.row) - progressBps(x.row));
+    out.innerHTML =
+      `<div class="status">${mine.length} vibe/vibe holding(s) · ${shortAddr(a)}</div>` +
+      `<div class="row wallet-row legend">
+         <div class="rank">%</div><div class="tok">TOKEN</div><div class="pair">PAIR</div>
+         <div class="bar"></div><div class="num">TO GRADUATION</div>
+         <div class="num muted eta">VALUE AT CURVE PRICE</div><span></span>
+       </div>` +
+      mine.map((x) => positionRow(x.row, BigInt(x.b.raw), x.b.decimals)).join("");
+  } catch (e) {
+    out.innerHTML = `<div class="status err">could not read that wallet: ${e.message}</div>`;
+  }
+}
+
 async function boot() {
   document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
   window.addEventListener("hashchange", route);
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-star]");
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const on = toggleWatch(el.dataset.star);
+    el.textContent = on ? "★" : "☆";
+    el.classList.toggle("on", on);
+    if (state.tab === "wallet") renderWatchList();
+  });
   $("#refresh").addEventListener("click", refresh);
   $("#score-go").addEventListener("click", () => scoreToken($("#score-addr").value));
+  $("#wallet-go").addEventListener("click", () => loadWallet($("#wallet-addr").value));
+  $("#wallet-addr").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loadWallet($("#wallet-addr").value);
+  });
   $("#score-addr").addEventListener("keydown", (e) => {
     if (e.key === "Enter") scoreToken($("#score-addr").value);
   });

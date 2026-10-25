@@ -37,6 +37,7 @@
       <button class="tab" data-tab="graduated">Graduated</button>
       <button class="tab" data-tab="trending">Trending</button>
       <button class="tab" data-tab="score">Launch score</button>
+      <button class="tab" data-tab="wallet">My positions</button>
       <button class="tab" data-tab="about">How it works</button>
       <span class="spacer"></span>
       <button id="refresh" class="ghost" title="refresh">↻</button>
@@ -78,6 +79,20 @@
         </div>
         <div id="score-suggest" class="suggest"></div>
         <div id="score-out"></div>
+      </section>
+
+      <section id="panel-wallet" class="panel hidden">
+        <div class="panel-head">
+          <h2>My positions</h2>
+          <p>Read-only. Paste a wallet — nothing is signed, no connection is requested.</p>
+        </div>
+        <div class="score-input">
+          <input id="wallet-addr" placeholder="0x… wallet address" spellcheck="false" />
+          <button id="wallet-go">Load</button>
+        </div>
+        <div id="wallet-out"></div>
+        <h3 class="sub-head">Watching</h3>
+        <div id="watch-out" class="radar"></div>
       </section>
 
       <section id="panel-token" class="panel hidden"></section>

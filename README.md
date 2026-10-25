@@ -13,7 +13,10 @@ Unofficial community tool. No affiliation with vibe/vibe, Seedify or Robinhood.
 3. **Token page** — price chart from 15m candles, exact progress, holder and volume stats.
 4. **Launch score** — a 0–100 score with six published components and three concrete fixes.
 5. **How it works** — the full curve math, so anyone can check the numbers.
-6. **Telegram** — `@VibeGraduation` posts a card for every new graduation, plus a weekly report.
+6. **My positions** — paste a wallet (read-only, no signing) and see every vibe/vibe holding
+   with its progress and its value priced off the curve itself. Star launches to watch them.
+7. **Alerts** — the channel pings at 90% and 99% to graduation, once per token.
+8. **Telegram** — `@VibeGraduation` posts a card for every new graduation, plus a weekly report.
 
 ## The math (reverse-engineered, verified to the wei)
 

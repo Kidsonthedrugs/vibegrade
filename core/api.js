@@ -94,6 +94,30 @@ export async function candles(token, interval = "15m") {
   return (j.data && j.data.items) || [];
 }
 
+/** All ERC-20 balances for a wallet, straight from the chain explorer (CORS: *). */
+export async function walletTokens(address) {
+  const url = `https://explorer.testnet.chain.robinhood.com/api/v2/addresses/${address}/token-balances`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: { accept: "application/json" } });
+    if (!res.ok) throw new Error(`${res.status} explorer`);
+    const rows = await res.json();
+    return rows
+      .filter((x) => x.token && x.token.type === "ERC-20")
+      .map((x) => ({
+        token: String(x.token.address_hash || "").toLowerCase(),
+        symbol: x.token.symbol,
+        name: x.token.name,
+        decimals: Number(x.token.decimals || 18),
+        raw: String(x.value || "0"),
+      }))
+      .filter((x) => x.token && x.raw !== "0");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const shortAddr = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "?");
 
 /** Launch detail + the market block (holders, volume) which only the board carries. */
