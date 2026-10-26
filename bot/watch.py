@@ -16,10 +16,12 @@ WAD = 10 ** 18
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Anti-flood rules. A channel that pings constantly gets muted, which defeats the point.
-MAX_CARDS_PER_RUN = 3      # individual cards per run, at most
-MAX_AGE_HOURS = 6          # older graduations never get a card, only a digest line
-MIN_HOLDERS = 5            # below this a launch is noise, not news
-DIGEST_LINES = 8           # rows shown in a backlog digest
+# Volume reality (measured over 24h): ~115 graduations/day, 4.8/hour.
+# One post each is a firehose nobody follows. So: one card for the fastest launch in
+# each window, plus a single digest for the rest. Nothing is lost, nothing floods.
+DIGEST_EVERY_HOURS = 6     # how often the window closes
+DIGEST_LINES = 10          # rows listed before "+N more"
+CARD_MIN_SPEED_IMPROVEMENT = 0  # the card always goes to the fastest of the window
 STATE = os.path.join(ROOT, "data", "state.json")
 OUT = os.path.join(ROOT, "out")
 APP = "https://testnet.vibevibe.fun"
@@ -146,8 +148,8 @@ def check_once(state: dict, post: bool = True, limit: int | None = None) -> list
         fresh = fresh[:limit]
     if post:
         os.makedirs(OUT, exist_ok=True)
-        # 0) the board omits the graduation block, so hydrate before judging age
-        for r in fresh[:12]:
+        # 0) the board omits the graduation block, so hydrate before judging
+        for r in fresh[:40]:
             if not (r.get("graduation") or {}).get("at") or not (r.get("market") or {}).get("holderCount"):
                 try:
                     det = api.launch(r["token"]).get("launch") or {}
@@ -156,63 +158,70 @@ def check_once(state: dict, post: bool = True, limit: int | None = None) -> list
                 except Exception as e:  # noqa: BLE001
                     print(f"hydrate failed for {r.get('symbol')}: {e}")
 
-        # 1) decide what deserves a full card
-        eligible = [r for r in fresh if age_hours(r) <= MAX_AGE_HOURS
-                    and int((r.get("market") or {}).get("holderCount") or 0) >= MIN_HOLDERS]
-        # backlog mode: after a real outage one digest beats three random cards
-        if (state.get("gap_hours") or 0) >= 6:
-            eligible = []
-        cards = eligible[:MAX_CARDS_PER_RUN]          # `fresh` is newest-first
-        rest = [r for r in fresh if r not in cards]
+        # 1) is it time to open a publishing window?
+        last = _parse(state.get("last_digest_at"))
+        due = last is None or (datetime.now(timezone.utc) - last).total_seconds() >= DIGEST_EVERY_HOURS * 3600
+        backlog = (state.get("gap_hours") or 0) >= 6
+        if not fresh:
+            return fresh
+        if not (due or backlog):
+            print(f"{len(fresh)} new graduation(s) queued for the next window")
+            return fresh
 
-        # 2) cards, oldest of the chosen batch first so the channel reads chronologically
-        for r in reversed(cards):
-            tok = r["token"]
-            img = fetch_image(r.get("image"), os.path.join(OUT, f"{tok}.webp"))
-            grad = r.get("graduation") or {}
-            card = os.path.join(OUT, f"grad_{tok}.png")
-            render_graduation_card(
-                {
-                    "symbol": r["symbol"],
-                    "name": r.get("name") or "",
-                    "image_path": img,
-                    "time_to_grad": human_delta(r["createdAt"], grad.get("at", r["createdAt"])),
-                    "holders": f"{int((r.get('market') or {}).get('holderCount') or 0):,}",
-                    "volume": fmt_tokens(int((r.get("market") or {}).get("volume24hPairUnits") or 0)),
-                    "hero": (
-                        f"{int(grad.get('pairUnits', 0)) / WAD:,.2f} {r.get('pairSymbol') or 'ETH'} RAISED  ·  "
-                        f"{fmt_tokens(int(grad.get('tokenUnits', 0)))} INTO LP"
-                        if grad.get("pairUnits")
-                        else "BONDING CURVE COMPLETE"
-                    ),
-                    "footer_left": f"{tok[:6]}…{tok[-4:]}  ·  robinhood chain testnet",
-                    "footer_right": "vibegrade",
-                },
-                card,
-            )
-            try:
-                telegram.send_photo(card, build_caption(r, tok))
-                state["posted"].append(tok)
-                print(f"posted card {r['symbol']}")
-            except Exception as e:  # noqa: BLE001
-                print(f"FAILED {r['symbol']}: {e}")
-                continue
-            time.sleep(1.5)
+        def speed(r):
+            g = (r.get("graduation") or {}).get("at")
+            c = r.get("createdAt")
+            t0, t1 = _parse(c), _parse(g)
+            return int((t1 - t0).total_seconds()) if (t0 and t1) else 10 ** 9
 
-        # 3) everything else goes into ONE digest message
+        pending = sorted(fresh, key=speed)          # fastest first
+        hero = pending[0]
+        rest = pending[1:]
+
+        # 2) the fastest launch of the window gets the card
+        tok = hero["token"]
+        img = fetch_image(hero.get("image"), os.path.join(OUT, f"{tok}.webp"))
+        grad = hero.get("graduation") or {}
+        card = os.path.join(OUT, f"grad_{tok}.png")
+        render_graduation_card(
+            {
+                "symbol": hero["symbol"],
+                "name": hero.get("name") or "",
+                "image_path": img,
+                "time_to_grad": human_delta(hero["createdAt"], grad.get("at", hero["createdAt"])),
+                "holders": f"{int((hero.get('market') or {}).get('holderCount') or 0):,}",
+                "volume": fmt_tokens(int((hero.get("market") or {}).get("volume24hPairUnits") or 0)),
+                "hero": (
+                    f"{int(grad.get('pairUnits', 0)) / WAD:,.2f} {hero.get('pairSymbol') or 'ETH'} RAISED  ·  "
+                    f"{fmt_tokens(int(grad.get('tokenUnits', 0)))} INTO LP"
+                    if grad.get("pairUnits")
+                    else "FASTEST GRADUATION OF THE WINDOW"
+                ),
+                "footer_left": f"{tok[:6]}…{tok[-4:]}  ·  robinhood chain testnet",
+                "footer_right": "fastest of the window",
+            },
+            card,
+        )
+        try:
+            telegram.send_photo(card, build_caption(hero, tok))
+            state["posted"].append(tok)
+            print(f"card: {hero['symbol']} ({speed(hero)}s)")
+        except Exception as e:  # noqa: BLE001
+            print(f"card failed: {e}")
+            rest = pending
+
+        # 3) everything else in one digest
         if rest:
-            why = (
-                "while the watcher was offline"
-                if (state.get("gap_hours") or 0) >= 6
-                else "in this batch"
-            )
+            why = "while the watcher was offline" if backlog else f"in the last {DIGEST_EVERY_HOURS}h"
             try:
                 telegram.send_message(digest_text(rest, why))
                 for r in rest:
                     state["posted"].append(r["token"])
-                print(f"digest for {len(rest)} launch(es)")
+                print(f"digest: {len(rest)} launch(es)")
             except Exception as e:  # noqa: BLE001
                 print(f"digest failed: {e}")
+
+        state["last_digest_at"] = datetime.now(timezone.utc).isoformat()
     return fresh
 
 
