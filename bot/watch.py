@@ -14,9 +14,16 @@ from bot.curve import fmt_tokens  # noqa: E402
 
 WAD = 10 ** 18
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Anti-flood rules. A channel that pings constantly gets muted, which defeats the point.
+MAX_CARDS_PER_RUN = 3      # individual cards per run, at most
+MAX_AGE_HOURS = 6          # older graduations never get a card, only a digest line
+MIN_HOLDERS = 5            # below this a launch is noise, not news
+DIGEST_LINES = 8           # rows shown in a backlog digest
 STATE = os.path.join(ROOT, "data", "state.json")
 OUT = os.path.join(ROOT, "out")
 APP = "https://testnet.vibevibe.fun"
+SITE = "https://vibegrade-eta.vercel.app"
 
 
 def load_state() -> dict:
@@ -47,6 +54,41 @@ def human_delta(a: str, b: str) -> str:
     if s < 5400:
         return f"{s // 60}m {s % 60}s"
     return f"{s // 3600}h {(s % 3600) // 60}m"
+
+
+def age_hours(r: dict) -> float:
+    g = (r.get("graduation") or {}).get("at") or r.get("createdAt")
+    t = _parse(g)
+    if not t:
+        return 999.0
+    return (datetime.now(timezone.utc) - t).total_seconds() / 3600
+
+
+def _parse(s: str | None):
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def digest_text(rows: list[dict], why: str) -> str:
+    rows = sorted(rows, key=lambda r: int((r.get("market") or {}).get("holderCount") or 0), reverse=True)
+    lines = []
+    for r in rows[:DIGEST_LINES]:
+        holders = int((r.get("market") or {}).get("holderCount") or 0)
+        grad = r.get("graduation") or {}
+        dur = human_delta(r.get("createdAt") or "", grad.get("at") or "")
+        lines.append(f"• <b>{r['symbol']}</b> — {holders:,} holders · {dur}")
+    more = len(rows) - len(lines)
+    tail = f"\n<i>+{more} more</i>" if more > 0 else ""
+    return (
+        f"🗂 <b>{len(rows)} launches graduated</b> {why}\n"
+        f"━━━━━━━━━━━━\n" + "\n".join(lines) + tail + "\n"
+        f"━━━━━━━━━━━━\n"
+        f'<a href="{SITE}">see them all on the radar</a>'
+    )
 
 
 def fetch_image(cid: str | None, dest: str) -> str | None:
@@ -104,15 +146,28 @@ def check_once(state: dict, post: bool = True, limit: int | None = None) -> list
         fresh = fresh[:limit]
     if post:
         os.makedirs(OUT, exist_ok=True)
-        for r in reversed(fresh):  # oldest first so the channel reads chronologically
-            tok = r["token"]
-            if not r.get("graduation") or not (r.get("graduation") or {}).get("pairUnits"):
+        # 0) the board omits the graduation block, so hydrate before judging age
+        for r in fresh[:12]:
+            if not (r.get("graduation") or {}).get("at") or not (r.get("market") or {}).get("holderCount"):
                 try:
-                    det = api.launch(tok).get("launch") or {}
+                    det = api.launch(r["token"]).get("launch") or {}
                     r["graduation"] = det.get("graduation") or r.get("graduation") or {}
                     r["market"] = det.get("market") or r.get("market") or {}
                 except Exception as e:  # noqa: BLE001
-                    print(f"detail fetch failed for {tok}: {e}")
+                    print(f"hydrate failed for {r.get('symbol')}: {e}")
+
+        # 1) decide what deserves a full card
+        eligible = [r for r in fresh if age_hours(r) <= MAX_AGE_HOURS
+                    and int((r.get("market") or {}).get("holderCount") or 0) >= MIN_HOLDERS]
+        # backlog mode: after a real outage one digest beats three random cards
+        if (state.get("gap_hours") or 0) >= 6:
+            eligible = []
+        cards = eligible[:MAX_CARDS_PER_RUN]          # `fresh` is newest-first
+        rest = [r for r in fresh if r not in cards]
+
+        # 2) cards, oldest of the chosen batch first so the channel reads chronologically
+        for r in reversed(cards):
+            tok = r["token"]
             img = fetch_image(r.get("image"), os.path.join(OUT, f"{tok}.webp"))
             grad = r.get("graduation") or {}
             card = os.path.join(OUT, f"grad_{tok}.png")
@@ -138,15 +193,34 @@ def check_once(state: dict, post: bool = True, limit: int | None = None) -> list
             try:
                 telegram.send_photo(card, build_caption(r, tok))
                 state["posted"].append(tok)
-                print(f"posted {r['symbol']} {tok}")
+                print(f"posted card {r['symbol']}")
             except Exception as e:  # noqa: BLE001
                 print(f"FAILED {r['symbol']}: {e}")
+                continue
             time.sleep(1.5)
+
+        # 3) everything else goes into ONE digest message
+        if rest:
+            why = (
+                "while the watcher was offline"
+                if (state.get("gap_hours") or 0) >= 6
+                else "in this batch"
+            )
+            try:
+                telegram.send_message(digest_text(rest, why))
+                for r in rest:
+                    state["posted"].append(r["token"])
+                print(f"digest for {len(rest)} launch(es)")
+            except Exception as e:  # noqa: BLE001
+                print(f"digest failed: {e}")
     return fresh
 
 
 def main() -> int:
     state = load_state()
+    prev = _parse(state.get("last_check"))
+    if prev:
+        state["gap_hours"] = (datetime.now(timezone.utc) - prev).total_seconds() / 3600
     seed = "--seed" in sys.argv
     limit = None
     if "--limit" in sys.argv:
